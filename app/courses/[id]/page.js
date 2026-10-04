@@ -5,8 +5,7 @@ import Link from 'next/link'
 // Ensure fresh data is fetched on every visit
 export const dynamic = 'force-dynamic'
 
-// This Server Component renders the course details and its lessons.
-// Students see the lessons only; instructors also see the "Add Lesson" form.
+// This Server Component renders the course details, lessons, and enrollment actions.
 export default async function CourseDetailPage({ params }) {
   // In Next.js 15+, dynamic route params must be awaited
   const { id } = await params
@@ -47,7 +46,20 @@ export default async function CourseDetailPage({ params }) {
   // Check if the current user is the instructor who owns this course
   const isInstructor = userRole === 'instructor' && course.instructor_id === user.id
 
-  // 4. Fetch all lessons belonging to this course
+  // 4. Check enrollment status (only relevant for students)
+  let isEnrolled = false
+  if (userRole === 'student') {
+    const { data: enrollment } = await supabase
+      .from('enrollments')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('course_id', id)
+      .maybeSingle()
+
+    isEnrolled = !!enrollment
+  }
+
+  // 5. Fetch all lessons belonging to this course
   const { data: lessonsData } = await supabase
     .from('lessons')
     .select('*')
@@ -56,7 +68,40 @@ export default async function CourseDetailPage({ params }) {
 
   const lessons = lessonsData || []
 
-  // 5. Server Action to add a new lesson (only instructors can execute this)
+  // 6. Server Action to handle student enrollment
+  async function enrollInCourse() {
+    'use server'
+
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      redirect('/login')
+    }
+
+    // Insert into 'enrollments' table using column names from supabase/schema.sql
+    const { error: enrollError } = await supabase.from('enrollments').insert({
+      user_id: user.id,
+      course_id: id,
+    })
+
+    if (enrollError) {
+      // PostgreSQL error code '23505' indicates a unique constraint violation (already enrolled)
+      if (enrollError.code === '23505') {
+        console.log('User is already enrolled in this course.')
+      } else {
+        console.error('Enrollment failed:', enrollError.message)
+        throw new Error('Enrollment failed: ' + enrollError.message)
+      }
+    }
+
+    // Re-render the course page so the user immediately sees the "Enrolled" badge
+    redirect(`/courses/${id}`)
+  }
+
+  // 7. Server Action to add a new lesson (only instructors can execute this)
   async function addLesson(formData) {
     'use server'
 
@@ -116,6 +161,49 @@ export default async function CourseDetailPage({ params }) {
       <p style={{ color: '#555', fontSize: '16px', lineHeight: '1.5', marginTop: 0 }}>
         {course.description || <em>No description provided.</em>}
       </p>
+
+      {/* Student Enrollment Section:
+          - Only visible to students (instructors do not see it).
+          - If already enrolled, displays "Enrolled" badge.
+          - If not enrolled, displays "Enroll" button. */}
+      {userRole === 'student' && (
+        <div style={{ marginTop: '20px', marginBottom: '10px' }}>
+          {isEnrolled ? (
+            <span
+              style={{
+                display: 'inline-block',
+                backgroundColor: '#e6f4ea',
+                color: '#137333',
+                padding: '8px 16px',
+                borderRadius: '20px',
+                fontWeight: 'bold',
+                fontSize: '14px',
+                border: '1px solid #ceead6',
+              }}
+            >
+              ✓ Enrolled
+            </span>
+          ) : (
+            <form action={enrollInCourse}>
+              <button
+                type="submit"
+                style={{
+                  padding: '10px 22px',
+                  backgroundColor: '#0070f3',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '5px',
+                  fontSize: '15px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                }}
+              >
+                Enroll in this course
+              </button>
+            </form>
+          )}
+        </div>
+      )}
 
       <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '30px 0' }} />
 
