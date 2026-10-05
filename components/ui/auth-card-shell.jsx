@@ -33,10 +33,10 @@ export default function AuthCardShell({ children, className }) {
 
           {/* Traveling light streaks along each edge of the card */}
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
-            <div className="auth-beam auth-beam-top absolute top-0 h-px w-1/2 bg-gradient-to-r from-transparent via-white to-transparent" />
-            <div className="auth-beam auth-beam-right absolute right-0 h-1/2 w-px bg-gradient-to-b from-transparent via-white to-transparent" />
-            <div className="auth-beam auth-beam-bottom absolute bottom-0 h-px w-1/2 bg-gradient-to-r from-transparent via-white to-transparent" />
-            <div className="auth-beam auth-beam-left absolute bottom-0 h-1/2 w-px bg-gradient-to-b from-transparent via-white to-transparent" />
+            <div className="auth-beam auth-beam-top absolute top-0 h-px w-1/2 bg-linear-to-r from-transparent via-white to-transparent" />
+            <div className="auth-beam auth-beam-right absolute right-0 h-1/2 w-px bg-linear-to-b from-transparent via-white to-transparent" />
+            <div className="auth-beam auth-beam-bottom absolute bottom-0 h-px w-1/2 bg-linear-to-r from-transparent via-white to-transparent" />
+            <div className="auth-beam auth-beam-left absolute bottom-0 h-1/2 w-px bg-linear-to-b from-transparent via-white to-transparent" />
           </div>
 
           {/* Frosted dark glass container with generous padding */}

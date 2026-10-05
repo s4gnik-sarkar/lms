@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react'
+import { FcGoogle } from 'react-icons/fc'
 import { createClient } from '@/lib/supabase/client'
 import AuthCardShell from '@/components/ui/auth-card-shell'
 import KineticGrid from '@/components/ui/kinetic-grid'
@@ -26,6 +27,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [checkingAuth, setCheckingAuth] = useState(true)
 
   useEffect(() => {
@@ -43,10 +45,45 @@ export default function LoginPage() {
         setEmail(savedEmail)
         setRememberMe(true)
       }
+
+      // Check for OAuth error message passed via redirect query params
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search)
+        const oauthError = params.get('error_description') || params.get('error')
+        if (oauthError) {
+          setError(decodeURIComponent(oauthError))
+        }
+      }
+
       setCheckingAuth(false)
     }
     checkExistingSession()
   }, [router])
+
+  async function handleGoogleLogin() {
+    setError(null)
+    setGoogleLoading(true)
+    try {
+      const supabase = createClient()
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      })
+      if (oauthError) {
+        setError(oauthError.message)
+        setGoogleLoading(false)
+      }
+    } catch (err) {
+      setError(`Connection error: ${err.message || 'Unable to connect to Google OAuth.'}`)
+      setGoogleLoading(false)
+    }
+  }
 
   async function handleSubmit(event) {
     event.preventDefault()
@@ -124,6 +161,29 @@ export default function LoginPage() {
               </div>
             )}
 
+            {/* Continue with Google OAuth Button */}
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={loading || googleLoading}
+              className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-white/15 bg-white/5 text-base font-semibold text-white shadow-sm transition hover:bg-white/10 hover:border-white/25 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+            >
+              {googleLoading ? (
+                <span className="size-5 animate-spin rounded-full border-2 border-white/70 border-t-transparent" />
+              ) : (
+                <FcGoogle className="size-5 shrink-0" />
+              )}
+              <span>{googleLoading ? 'Connecting to Google...' : 'Continue with Google'}</span>
+            </button>
+
+            {/* Divider */}
+            <div className="relative my-5 flex items-center justify-center">
+              <div className="w-full border-t border-white/10" />
+              <span className="absolute bg-black px-3 text-xs font-medium uppercase tracking-wider text-white/50">
+                or continue with email
+              </span>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Email Input */}
               <div className="space-y-1.5">
@@ -192,7 +252,7 @@ export default function LoginPage() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || googleLoading}
                 className="mt-2.5 flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-white text-base font-semibold text-black shadow-lg transition hover:scale-[1.015] hover:bg-white/90 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
               >
                 {loading ? (

@@ -186,23 +186,87 @@ body {
   50% { opacity: 0.55; }
 }
 
-@keyframes auth-beam-horizontal {
-  0% { transform: translateX(-110%); }
-  58%, 100% { transform: translateX(220%); }
+@keyframes auth-beam-right {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  58%,
+  100% {
+    transform: translateX(220%);
+  }
 }
 
-@keyframes auth-beam-vertical {
-  0% { transform: translateY(-110%); }
-  58%, 100% { transform: translateY(220%); }
+@keyframes auth-beam-down {
+  0% {
+    transform: translateY(-110%);
+  }
+
+  58%,
+  100% {
+    transform: translateY(220%);
+  }
 }
 
-.auth-card-enter { animation: auth-card-enter 550ms ease-out both; }
-.auth-card-pulse { animation: auth-card-pulse 3.5s ease-in-out infinite; }
-.auth-beam { animation-duration: 3.6s; animation-iteration-count: infinite; animation-timing-function: ease-in-out; }
-.auth-beam-top { animation-name: auth-beam-horizontal; }
-.auth-beam-right { animation-name: auth-beam-vertical; animation-delay: 0.9s; }
-.auth-beam-bottom { animation-name: auth-beam-horizontal; animation-delay: 1.8s; }
-.auth-beam-left { animation-name: auth-beam-vertical; animation-delay: 2.7s; }
+@keyframes auth-beam-left {
+  0% {
+    transform: translateX(110%);
+  }
+
+  58%,
+  100% {
+    transform: translateX(-220%);
+  }
+}
+
+@keyframes auth-beam-up {
+  0% {
+    transform: translateY(110%);
+  }
+
+  58%,
+  100% {
+    transform: translateY(-220%);
+  }
+}
+
+.auth-card-enter {
+  animation: auth-card-enter 550ms ease-out both;
+}
+
+.auth-card-pulse {
+  animation: auth-card-pulse 3.5s ease-in-out infinite;
+}
+
+.auth-beam {
+  animation-duration: 3.6s;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+/* TOP: left → right */
+.auth-beam-top {
+  animation-name: auth-beam-right;
+}
+
+/* RIGHT: top → bottom */
+.auth-beam-right {
+  animation-name: auth-beam-down;
+  animation-delay: 0.9s;
+}
+
+/* BOTTOM: right → left */
+.auth-beam-bottom {
+  animation-name: auth-beam-left;
+  animation-delay: 2.0s;
+}
+
+/* LEFT: bottom → top */
+.auth-beam-left {
+  animation-name: auth-beam-up;
+  animation-delay: 2.7s;
+}
+
 
 @media (prefers-reduced-motion: reduce) {
   .auth-card-enter,
