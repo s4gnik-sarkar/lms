@@ -1,13 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
+import { ConfirmButton } from '@/components/confirm-button'
 
 // Ensure fresh data is fetched on every visit
 export const dynamic = 'force-dynamic'
 
-// This Server Component renders the course details, lessons, and enrollment actions.
+// This Server Component renders course details, lessons, enrollment, and course management.
 export default async function CourseDetailPage({ params }) {
-  // In Next.js 15+, dynamic route params must be awaited
+  // In modern Next.js, dynamic route params must be awaited
   const { id } = await params
 
   const supabase = await createClient()
@@ -68,7 +70,7 @@ export default async function CourseDetailPage({ params }) {
 
   const lessons = lessonsData || []
 
-  // 6. Server Action to handle student enrollment
+  // 6. Server Action: Student Enrollment
   async function enrollInCourse() {
     'use server'
 
@@ -81,14 +83,12 @@ export default async function CourseDetailPage({ params }) {
       redirect('/login')
     }
 
-    // Insert into 'enrollments' table using column names from supabase/schema.sql
     const { error: enrollError } = await supabase.from('enrollments').insert({
       user_id: user.id,
       course_id: id,
     })
 
     if (enrollError) {
-      // PostgreSQL error code '23505' indicates a unique constraint violation (already enrolled)
       if (enrollError.code === '23505') {
         console.log('User is already enrolled in this course.')
       } else {
@@ -97,11 +97,97 @@ export default async function CourseDetailPage({ params }) {
       }
     }
 
-    // Re-render the course page so the user immediately sees the "Enrolled" badge
+    revalidatePath(`/courses/${id}`)
+    revalidatePath('/dashboard')
     redirect(`/courses/${id}`)
   }
 
-  // 7. Server Action to add a new lesson (only instructors can execute this)
+  // 7. Server Action: Student Unenrollment
+  async function unenrollFromCourse() {
+    'use server'
+
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      redirect('/login')
+    }
+
+    // A. Delete any lesson_progress for lessons in this course
+    const { data: courseLessons } = await supabase
+      .from('lessons')
+      .select('id')
+      .eq('course_id', id)
+
+    if (courseLessons && courseLessons.length > 0) {
+      const lessonIds = courseLessons.map((l) => l.id)
+      await supabase
+        .from('lesson_progress')
+        .delete()
+        .eq('user_id', user.id)
+        .in('lesson_id', lessonIds)
+    }
+
+    // B. Delete the student's enrollment record
+    const { error: unenrollError } = await supabase
+      .from('enrollments')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('course_id', id)
+
+    if (unenrollError) {
+      console.error('Failed to unenroll:', unenrollError.message)
+      throw new Error('Failed to unenroll: ' + unenrollError.message)
+    }
+
+    revalidatePath(`/courses/${id}`)
+    revalidatePath('/dashboard')
+    redirect(`/courses/${id}`)
+  }
+
+  // 8. Server Action: Delete Course (Instructor ownership verified)
+  async function deleteCourse() {
+    'use server'
+
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      redirect('/login')
+    }
+
+    // Verify ownership on the server: only the course instructor can delete it
+    const { data: targetCourse } = await supabase
+      .from('courses')
+      .select('instructor_id')
+      .eq('id', id)
+      .single()
+
+    if (!targetCourse || targetCourse.instructor_id !== user.id) {
+      throw new Error('Unauthorized: You can only delete your own courses.')
+    }
+
+    // Delete the course (cascades to lessons, enrollments, and progress via foreign keys)
+    const { error: deleteError } = await supabase
+      .from('courses')
+      .delete()
+      .eq('id', id)
+      .eq('instructor_id', user.id)
+
+    if (deleteError) {
+      console.error('Failed to delete course:', deleteError.message)
+      throw new Error('Failed to delete course: ' + deleteError.message)
+    }
+
+    revalidatePath('/dashboard')
+    redirect('/dashboard')
+  }
+
+  // 9. Server Action: Add a New Lesson (Instructors only)
   async function addLesson(formData) {
     'use server'
 
@@ -132,7 +218,6 @@ export default async function CourseDetailPage({ params }) {
       throw new Error('Unauthorized: Only the course instructor can add lessons.')
     }
 
-    // Insert into 'lessons' table
     const { error: insertError } = await supabase.from('lessons').insert({
       course_id: id,
       title: title.trim(),
@@ -144,7 +229,7 @@ export default async function CourseDetailPage({ params }) {
       throw new Error('Database error: ' + insertError.message)
     }
 
-    // Refresh the course page to show the newly added lesson
+    revalidatePath(`/courses/${id}`)
     redirect(`/courses/${id}`)
   }
 
@@ -156,33 +241,54 @@ export default async function CourseDetailPage({ params }) {
         </Link>
       </p>
 
-      {/* Course Header */}
-      <h1 style={{ marginBottom: '8px' }}>{course.title}</h1>
+      {/* Course Header with optional Instructor Delete Button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '15px', marginBottom: '8px' }}>
+        <h1 style={{ margin: 0 }}>{course.title}</h1>
+        {isInstructor && (
+          <ConfirmButton
+            action={deleteCourse}
+            buttonText="Delete course"
+            confirmMessage="This will delete all lessons and student progress. Are you sure?"
+            variant="destructive"
+            size="sm"
+          />
+        )}
+      </div>
+
       <p style={{ color: '#555', fontSize: '16px', lineHeight: '1.5', marginTop: 0 }}>
         {course.description || <em>No description provided.</em>}
       </p>
 
       {/* Student Enrollment Section:
-          - Only visible to students (instructors do not see it).
-          - If already enrolled, displays "Enrolled" badge.
-          - If not enrolled, displays "Enroll" button. */}
+          - Only visible to students.
+          - If enrolled: shows "✓ Enrolled" badge AND "Unenroll" button with confirmation.
+          - If not enrolled: shows "Enroll in this course" button. */}
       {userRole === 'student' && (
         <div style={{ marginTop: '20px', marginBottom: '10px' }}>
           {isEnrolled ? (
-            <span
-              style={{
-                display: 'inline-block',
-                backgroundColor: '#e6f4ea',
-                color: '#137333',
-                padding: '8px 16px',
-                borderRadius: '20px',
-                fontWeight: 'bold',
-                fontSize: '14px',
-                border: '1px solid #ceead6',
-              }}
-            >
-              ✓ Enrolled
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span
+                style={{
+                  display: 'inline-block',
+                  backgroundColor: '#e6f4ea',
+                  color: '#137333',
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  fontWeight: 'bold',
+                  fontSize: '14px',
+                  border: '1px solid #ceead6',
+                }}
+              >
+                ✓ Enrolled
+              </span>
+              <ConfirmButton
+                action={unenrollFromCourse}
+                buttonText="Unenroll"
+                confirmMessage="Are you sure you want to unenroll from this course?"
+                variant="outline"
+                size="sm"
+              />
+            </div>
           ) : (
             <form action={enrollInCourse}>
               <button
@@ -207,7 +313,7 @@ export default async function CourseDetailPage({ params }) {
 
       <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '30px 0' }} />
 
-      {/* Lessons List Section (visible to BOTH students and instructors) */}
+      {/* Lessons List Section */}
       <h2>Lessons</h2>
       {lessons.length === 0 ? (
         <p style={{ color: '#777', fontStyle: 'italic' }}>No lessons added to this course yet.</p>
@@ -234,8 +340,7 @@ export default async function CourseDetailPage({ params }) {
         </div>
       )}
 
-      {/* "Add Lesson" Form: Rendered ONLY if the user is the course instructor.
-          For students, this entire section is omitted from the page! */}
+      {/* "Add Lesson" Form: Rendered ONLY if the user is the course instructor. */}
       {isInstructor && (
         <div style={{ marginTop: '40px', borderTop: '2px solid #eee', paddingTop: '25px' }}>
           <h3>Add a New Lesson</h3>

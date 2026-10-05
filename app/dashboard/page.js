@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
+import { ConfirmButton } from '@/components/confirm-button'
 
 // Ensure Next.js always fetches the latest data on every visit
 export const dynamic = 'force-dynamic'
@@ -67,7 +69,47 @@ export default async function DashboardPage() {
     allAvailableCourses = allCoursesData || []
   }
 
-  // 5. Server Action to handle user logout
+  // 5. Server Action to delete a course directly from the dashboard (Instructor ownership verified)
+  async function deleteCourseFromDashboard(courseId) {
+    'use server'
+
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      redirect('/login')
+    }
+
+    // Server-side ownership verification: verify the user is the course owner
+    const { data: targetCourse } = await supabase
+      .from('courses')
+      .select('instructor_id')
+      .eq('id', courseId)
+      .single()
+
+    if (!targetCourse || targetCourse.instructor_id !== user.id) {
+      throw new Error('Unauthorized: You can only delete your own courses.')
+    }
+
+    // Delete the course (cascades to lessons, enrollments, and progress via foreign keys)
+    const { error: deleteError } = await supabase
+      .from('courses')
+      .delete()
+      .eq('id', courseId)
+      .eq('instructor_id', user.id)
+
+    if (deleteError) {
+      console.error('Failed to delete course:', deleteError.message)
+      throw new Error('Failed to delete course: ' + deleteError.message)
+    }
+
+    revalidatePath('/dashboard')
+    redirect('/dashboard')
+  }
+
+  // 6. Server Action to handle user logout
   async function logout() {
     'use server'
     const supabase = await createClient()
@@ -102,7 +144,7 @@ export default async function DashboardPage() {
       </p>
 
       {/* ============================================================== */}
-      {/* INSTRUCTOR VIEW: Shows courses they created + Create Course btn */}
+      {/* INSTRUCTOR VIEW: Shows courses they created + Delete button    */}
       {/* ============================================================== */}
       {role === 'instructor' && (
         <div style={{ marginTop: '30px' }}>
@@ -141,14 +183,25 @@ export default async function DashboardPage() {
                     backgroundColor: '#fafafa',
                   }}
                 >
-                  <h3 style={{ margin: '0 0 6px 0', fontSize: '18px' }}>
-                    <Link
-                      href={`/courses/${course.id}`}
-                      style={{ color: '#0070f3', textDecoration: 'none' }}
-                    >
-                      {course.title} &rarr;
-                    </Link>
-                  </h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+                    <h3 style={{ margin: '0 0 6px 0', fontSize: '18px' }}>
+                      <Link
+                        href={`/courses/${course.id}`}
+                        style={{ color: '#0070f3', textDecoration: 'none' }}
+                      >
+                        {course.title} &rarr;
+                      </Link>
+                    </h3>
+
+                    {/* Delete course button with confirmation */}
+                    <ConfirmButton
+                      action={deleteCourseFromDashboard.bind(null, course.id)}
+                      buttonText="Delete course"
+                      confirmMessage="This will delete all lessons and student progress. Are you sure?"
+                      variant="destructive"
+                      size="sm"
+                    />
+                  </div>
                   <p style={{ margin: 0, color: '#555', fontSize: '14px', whiteSpace: 'pre-wrap' }}>
                     {course.description || <em>No description provided.</em>}
                   </p>

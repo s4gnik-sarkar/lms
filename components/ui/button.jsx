@@ -34,16 +34,29 @@ const buttonVariants = cva(
   }
 )
 
-const Button = React.forwardRef(({ className, variant, size, asChild = false, ...props }, ref) => {
-  const Comp = asChild ? Slot : 'button'
-  return (
-    <Comp
-      className={cn(buttonVariants({ variant, size, className }))}
-      ref={ref}
-      {...props}
-    />
-  )
-})
+const Button = React.forwardRef(
+  /**
+   * Props for the Button component. Typed via JSDoc so TypeScript consumers
+   * (e.g. .tsx pages) can pass children, native button attributes, and the
+   * cva variant/size options below.
+   * @param {{
+   *   className?: string,
+   *   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link',
+   *   size?: 'default' | 'sm' | 'lg' | 'icon',
+   *   asChild?: boolean
+   * } & React.ButtonHTMLAttributes<HTMLButtonElement>} props
+   */
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : 'button'
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
 Button.displayName = 'Button'
 
 export { Button, buttonVariants }

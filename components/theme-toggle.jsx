@@ -5,18 +5,20 @@ import { useTheme } from 'next-themes'
 import { Sun, Moon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
+const emptySubscribe = () => () => {}
+
 /**
  * Clean Dark/Light mode toggle button.
- * Waits for mount to prevent SSR hydration mismatches.
+ * Uses useSyncExternalStore to prevent SSR hydration mismatches
+ * without triggering cascading render warnings in React 19.
  */
 export function ThemeToggle() {
   const { setTheme, resolvedTheme } = useTheme()
-  const [mounted, setMounted] = React.useState(false)
-
-  // Delay rendering until client mounts to prevent hydration mismatches
-  React.useEffect(() => {
-    setMounted(true)
-  }, [])
+  const mounted = React.useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  )
 
   if (!mounted) {
     return (
@@ -44,4 +46,3 @@ export function ThemeToggle() {
     </Button>
   )
 }
-

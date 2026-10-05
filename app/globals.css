@@ -87,3 +87,125 @@ body {
   color: var(--foreground);
   min-height: 100vh;
 }
+
+/*
+ * ── Border Beam (21st.dev / magicui style) ──────────────────────────────────
+ * A glowing beam that travels around a container's border.
+ * `.border-beam-glow` is the outer wrapper (adds the drop-shadow glow);
+ * `.border-beam` is the thin masked ring that actually rotates.
+ * Registered @property lets us animate the conic-gradient's angle.
+ */
+@property --beam-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.border-beam-glow {
+  filter: drop-shadow(0 0 var(--beam-glow, 8px) var(--beam-color-from, #3b82f6));
+}
+
+.border-beam {
+  padding: var(--beam-thickness, 1.5px);
+  background: conic-gradient(
+    from var(--beam-angle, 0deg),
+    transparent 0deg,
+    transparent 285deg,
+    color-mix(in srgb, var(--beam-color-from, #3b82f6) 40%, transparent) 315deg,
+    var(--beam-color-from, #3b82f6) 344deg,
+    var(--beam-color-to, #dbeafe) 356deg,
+    transparent 360deg
+  );
+  /* Mask everything except the padding band, leaving a thin border ring */
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  animation: border-beam-spin var(--beam-duration, 4s) linear infinite;
+}
+
+@keyframes border-beam-spin {
+  to {
+    --beam-angle: 360deg;
+  }
+}
+
+/*
+ * ── Shine Button (21st.dev / magicui style) ─────────────────────────────────
+ * A light sweep travels across the button. Apply `.btn-shine` to any button.
+ */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  width: 45%;
+  background: linear-gradient(
+    105deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-18deg);
+  animation: btn-shine-sweep 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes btn-shine-sweep {
+  0% {
+    left: -60%;
+  }
+  55%,
+  100% {
+    left: 130%;
+  }
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .border-beam,
+  .btn-shine::after {
+    animation: none;
+  }
+}
+
+/* Authentication card effects */
+@keyframes auth-card-enter {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes auth-card-pulse {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.55; }
+}
+
+@keyframes auth-beam-horizontal {
+  0% { transform: translateX(-110%); }
+  58%, 100% { transform: translateX(220%); }
+}
+
+@keyframes auth-beam-vertical {
+  0% { transform: translateY(-110%); }
+  58%, 100% { transform: translateY(220%); }
+}
+
+.auth-card-enter { animation: auth-card-enter 550ms ease-out both; }
+.auth-card-pulse { animation: auth-card-pulse 3.5s ease-in-out infinite; }
+.auth-beam { animation-duration: 3.6s; animation-iteration-count: infinite; animation-timing-function: ease-in-out; }
+.auth-beam-top { animation-name: auth-beam-horizontal; }
+.auth-beam-right { animation-name: auth-beam-vertical; animation-delay: 0.9s; }
+.auth-beam-bottom { animation-name: auth-beam-horizontal; animation-delay: 1.8s; }
+.auth-beam-left { animation-name: auth-beam-vertical; animation-delay: 2.7s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-card-enter,
+  .auth-card-pulse,
+  .auth-beam { animation: none; }
+}
