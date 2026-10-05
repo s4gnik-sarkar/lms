@@ -26,7 +26,7 @@ export default function AuthCardShell({ children, className }) {
             <div className="auth-beam auth-beam-bottom absolute bottom-0 h-px w-1/2 bg-gradient-to-r from-transparent via-white to-transparent" />
             <div className="auth-beam auth-beam-left absolute bottom-0 h-1/2 w-px bg-gradient-to-b from-transparent via-white to-transparent" />
           </div>
-          <div className={cn('relative overflow-hidden rounded-2xl border border-white/10 bg-black/55 p-6 text-white shadow-2xl backdrop-blur-xl sm:p-8', className)}>
+          <div className={cn('relative overflow-hidden rounded-2xl border border-white/10 bg-black p-6 text-white shadow-2xl backdrop-blur-xl sm:p-8', className)}>
             <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-[0.035] [background-image:linear-gradient(135deg,white_0.5px,transparent_0.5px),linear-gradient(45deg,white_0.5px,transparent_0.5px)] [background-size:30px_30px]" />
             <div className="relative">{children}</div>
           </div>

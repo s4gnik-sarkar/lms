@@ -7,6 +7,7 @@ import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import AuthCardShell from '@/components/ui/auth-card-shell'
 import KineticGrid from '@/components/ui/kinetic-grid'
+import { FloatingTechIcons } from '@/components/ui/floating-tech-icons'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -45,6 +46,7 @@ export default function SignupPage() {
 
   return (
     <KineticGrid className="min-h-[calc(100vh-4rem)] p-4 sm:p-6">
+      <FloatingTechIcons />
       <AuthCardShell>
         <div className="mb-5 text-center"><div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-sm font-bold">L</div><h1 className="text-2xl font-bold tracking-tight">Create an account</h1><p className="mt-1 text-sm text-white/60">Start learning or teaching today.</p></div>
         {error && <div className="mb-4 rounded-lg border border-red-400/30 bg-red-500/20 p-3 text-sm text-red-100">{error}</div>}{message && <div className="mb-4 rounded-lg border border-emerald-400/30 bg-emerald-500/20 p-3 text-sm text-emerald-100">{message}</div>}
