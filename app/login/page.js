@@ -8,6 +8,15 @@ import { createClient } from '@/lib/supabase/client'
 import AuthCardShell from '@/components/ui/auth-card-shell'
 import KineticGrid from '@/components/ui/kinetic-grid'
 import { FloatingTechIcons } from '@/components/ui/floating-tech-icons'
+import { TypewriterHeading } from '@/components/ui/typewriter-heading'
+
+const LOGIN_PHRASES = [
+  'Welcome back. Keep building.',
+  'From first line to full deployment.',
+  'Master React, Next.js & TypeScript.',
+  'Ship your next cloud & IoT project.',
+  'Your skills. Your pace. Your future.',
+]
 
 export default function LoginPage() {
   const router = useRouter()
@@ -22,7 +31,9 @@ export default function LoginPage() {
   useEffect(() => {
     async function checkExistingSession() {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (user) {
         router.replace('/dashboard')
         return
@@ -44,9 +55,16 @@ export default function LoginPage() {
     try {
       if (rememberMe) localStorage.setItem('lms_remembered_email', email)
       else localStorage.removeItem('lms_remembered_email')
-      const { error: signInError } = await createClient().auth.signInWithPassword({ email, password })
+      const { error: signInError } = await createClient().auth.signInWithPassword({
+        email,
+        password,
+      })
       if (signInError) {
-        setError(signInError.message.toLowerCase().includes('invalid login credentials') ? 'Incorrect email or password. Please double-check your credentials.' : signInError.message)
+        setError(
+          signInError.message.toLowerCase().includes('invalid login credentials')
+            ? 'Incorrect email or password. Please double-check your credentials.'
+            : signInError.message
+        )
         setLoading(false)
         return
       }
@@ -58,22 +76,148 @@ export default function LoginPage() {
     }
   }
 
-  if (checkingAuth) return <KineticGrid className="min-h-[calc(100vh-4rem)] p-4"><div className="rounded-2xl border border-white/10 bg-black/40 px-6 py-4 text-sm text-white/70 backdrop-blur-xl">Checking authentication session...</div></KineticGrid>
+  if (checkingAuth) {
+    return (
+      <KineticGrid className="min-h-[calc(100vh-4rem)] p-4 flex items-center justify-center">
+        <div className="rounded-2xl border border-white/10 bg-black/60 px-7 py-5 text-base text-white/80 backdrop-blur-xl">
+          Checking authentication session...
+        </div>
+      </KineticGrid>
+    )
+  }
 
   return (
-    <KineticGrid className="min-h-[calc(100vh-4rem)] p-4 sm:p-6">
+    <KineticGrid className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-12 flex items-center justify-center">
+      {/* Background Floating Tech Icons */}
       <FloatingTechIcons />
-      <AuthCardShell>
-        <div className="mb-6 text-center"><div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-sm font-bold">L</div><h1 className="text-2xl font-bold tracking-tight">Welcome back</h1><p className="mt-1 text-sm text-white/60">Sign in to continue learning.</p></div>
-        {error && <div className="mb-4 rounded-lg border border-red-400/30 bg-red-500/20 p-3 text-sm text-red-100">{error}</div>}
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <label className="block"><span className="sr-only">Email</span><div className="relative"><Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/45" /><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="Email address" className="h-11 w-full rounded-lg border border-transparent bg-white/5 pl-10 pr-3 text-sm text-white outline-none transition focus:border-white/25 focus:bg-white/10 focus:ring-2 focus:ring-white/10" /></div></label>
-          <label className="block"><span className="sr-only">Password</span><div className="relative"><Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/45" /><input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Password" className="h-11 w-full rounded-lg border border-transparent bg-white/5 pl-10 pr-10 text-sm text-white outline-none transition focus:border-white/25 focus:bg-white/10 focus:ring-2 focus:ring-white/10" /><button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/45 transition hover:text-white">{showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}</button></div></label>
-          <label className="flex cursor-pointer items-center gap-2 pt-1 text-xs text-white/65"><input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="size-4 accent-white" />Remember me</label>
-          <button type="submit" disabled={loading} className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-white text-sm font-semibold text-black transition hover:scale-[1.015] hover:bg-white/90 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60">{loading ? <span className="size-4 animate-spin rounded-full border-2 border-black/70 border-t-transparent" /> : <>Log in <ArrowRight className="size-4" /></>}</button>
-        </form>
-        <p className="mt-6 text-center text-sm text-white/60">Don&apos;t have an account? <Link href="/signup" className="font-semibold text-white transition hover:text-white/70 hover:underline">Sign up</Link></p>
-      </AuthCardShell>
+
+      {/* Main Responsive Grid Container */}
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center justify-center gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-16">
+        {/* Left Column on Desktop / Top Header on Mobile */}
+        <div className="w-full max-w-xl">
+          <TypewriterHeading
+            phrases={LOGIN_PHRASES}
+            badge="✦ Welcome Back"
+            subtitle="Pick up your learning journey right where you left off. Continue lessons, build real-world software, and level up your developer skills."
+          />
+        </div>
+
+        {/* Right Column: Glassmorphic Auth Form Card */}
+        <div className="flex w-full justify-center lg:justify-end">
+          <AuthCardShell>
+            {/* Card Header */}
+            <div className="mb-6 text-center">
+              <div className="mx-auto mb-3.5 flex size-12 items-center justify-center rounded-full border border-white/20 bg-white/10 text-base font-bold shadow-sm">
+                L
+              </div>
+              <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-white">
+                Log in
+              </h1>
+              <p className="mt-1.5 text-base text-white/70">
+                Sign in to continue your learning journey.
+              </p>
+            </div>
+
+            {error && (
+              <div className="mb-4 rounded-xl border border-red-400/30 bg-red-500/20 p-3.5 text-sm sm:text-base text-red-100">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Email Input */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-white/80">
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-white/50" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="you@example.com"
+                    className="h-12 w-full rounded-xl border border-white/10 bg-white/5 pl-11 pr-4 text-base text-white placeholder:text-base placeholder:text-white/40 outline-none transition focus:border-white/30 focus:bg-white/10 focus:ring-2 focus:ring-white/15"
+                  />
+                </div>
+              </div>
+
+              {/* Password Input */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-white/80">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-white/50" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    placeholder="Enter your password"
+                    className="h-12 w-full rounded-xl border border-white/10 bg-white/5 pl-11 pr-11 text-base text-white placeholder:text-base placeholder:text-white/40 outline-none transition focus:border-white/30 focus:bg-white/10 focus:ring-2 focus:ring-white/15"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/50 transition hover:text-white cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Options Row */}
+              <div className="flex items-center justify-between pt-1">
+                <label className="flex cursor-pointer items-center gap-2.5 text-sm text-white/75 hover:text-white transition">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="size-4.5 rounded accent-white cursor-pointer"
+                  />
+                  Remember me
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="text-sm text-white/70 hover:text-white transition cursor-pointer"
+                >
+                  {showPassword ? 'Hide password' : 'Show password'}
+                </button>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-2.5 flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-white text-base font-semibold text-black shadow-lg transition hover:scale-[1.015] hover:bg-white/90 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+              >
+                {loading ? (
+                  <span className="size-5 animate-spin rounded-full border-2 border-black/70 border-t-transparent" />
+                ) : (
+                  <>
+                    Log in <ArrowRight className="size-5" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Switch Page Link */}
+            <p className="mt-7 text-center text-base text-white/70">
+              Don&apos;t have an account?{' '}
+              <Link
+                href="/signup"
+                className="font-semibold text-white underline underline-offset-4 transition hover:text-white/80"
+              >
+                Sign up
+              </Link>
+            </p>
+          </AuthCardShell>
+        </div>
+      </div>
     </KineticGrid>
   )
 }
