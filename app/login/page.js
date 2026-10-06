@@ -30,6 +30,17 @@ export default function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [checkingAuth, setCheckingAuth] = useState(true)
 
+  function getRedirectDestination() {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const next = params.get('next')
+      if (next && next.startsWith('/') && !next.startsWith('//')) {
+        return next
+      }
+    }
+    return '/dashboard'
+  }
+
   useEffect(() => {
     async function checkExistingSession() {
       const supabase = createClient()
@@ -37,7 +48,7 @@ export default function LoginPage() {
         data: { user },
       } = await supabase.auth.getUser()
       if (user) {
-        router.replace('/dashboard')
+        router.replace(getRedirectDestination())
         return
       }
       const savedEmail = localStorage.getItem('lms_remembered_email')
@@ -65,10 +76,16 @@ export default function LoginPage() {
     setGoogleLoading(true)
     try {
       const supabase = createClient()
+      const next = getRedirectDestination()
+      const callbackUrl =
+        next !== '/dashboard'
+          ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+          : `${window.location.origin}/auth/callback`
+
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: callbackUrl,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -105,7 +122,7 @@ export default function LoginPage() {
         setLoading(false)
         return
       }
-      router.push('/dashboard')
+      router.push(getRedirectDestination())
       router.refresh()
     } catch (err) {
       setError(`Connection error: ${err.message || 'Unable to connect to Supabase.'}`)

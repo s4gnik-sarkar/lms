@@ -35,8 +35,8 @@ export default function RootLayout({
           {/* Shared top navigation bar */}
           <Navbar />
 
-          {/* Main application page content */}
-          <main className="flex-1 flex flex-col">{children}</main>
+          {/* Main application page content with top padding for floating navbar */}
+          <main className="flex-1 flex flex-col pt-20 sm:pt-24">{children}</main>
 
           {/* Shared bottom footer */}
           <Footer />

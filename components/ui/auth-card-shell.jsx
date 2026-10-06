@@ -42,7 +42,7 @@ export default function AuthCardShell({ children, className }) {
           {/* Frosted dark glass container with generous padding */}
           <div
             className={cn(
-              'relative overflow-hidden rounded-2xl border border-white/10 bg-black p-7 text-white shadow-2xl backdrop-blur-2xl sm:p-9',
+              'relative overflow-hidden rounded-2xl border border-white/10 bg-black/90 p-7 text-white shadow-2xl backdrop-blur-2xl sm:p-9',
               className
             )}
           >

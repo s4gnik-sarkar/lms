@@ -49,11 +49,13 @@ export async function middleware(request) {
   // Protected paths that require authentication
   const isProtectedPath =
     pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/courses/new')
+    pathname.startsWith('/courses/new') ||
+    pathname.startsWith('/my-courses')
 
   if (isProtectedPath && !user) {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = '/login'
+    redirectUrl.search = `?next=${encodeURIComponent(pathname)}`
     return NextResponse.redirect(redirectUrl)
   }
 
