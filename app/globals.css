@@ -267,9 +267,41 @@ body {
   animation-delay: 2.7s;
 }
 
+@keyframes learning-path-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes learning-path-current {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 24%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--primary) 0%, transparent);
+  }
+}
+
+.learning-path-step {
+  animation: learning-path-enter 450ms ease-out both;
+}
+
+.learning-path-current-node {
+  animation: learning-path-current 2.8s ease-in-out infinite;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .auth-card-enter,
   .auth-card-pulse,
-  .auth-beam { animation: none; }
+  .auth-beam,
+  .learning-path-step,
+  .learning-path-current-node {
+    animation: none;
+  }
 }
