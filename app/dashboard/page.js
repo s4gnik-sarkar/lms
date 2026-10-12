@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 import { ConfirmButton } from '@/components/confirm-button'
+import { getStudentDashboardData } from '@/lib/dashboard-data'
+import { StudentDashboard } from '@/components/dashboard/student-dashboard'
 
 // Ensure Next.js always fetches the latest data on every visit
 export const dynamic = 'force-dynamic'
@@ -26,7 +28,7 @@ export default async function DashboardPage() {
   // 3. Query the user's role from the 'profiles' database table
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, full_name')
     .eq('id', user.id)
     .single()
 
@@ -37,8 +39,7 @@ export default async function DashboardPage() {
   // - Instructors see courses they created (where instructor_id = user.id)
   // - Students see courses they are enrolled in (joined from enrollments), plus all available courses
   let instructorCourses = []
-  let enrolledCourses = []
-  let allAvailableCourses = []
+  let studentDashboardData = null
 
   if (role === 'instructor') {
     const { data: instructorData } = await supabase
@@ -48,25 +49,7 @@ export default async function DashboardPage() {
       .order('created_at', { ascending: false })
     instructorCourses = instructorData || []
   } else {
-    // Query enrolled courses for the student using a Supabase join on the 'courses' table
-    const { data: enrollmentData } = await supabase
-      .from('enrollments')
-      .select('enrolled_at, courses(id, title, description)')
-      .eq('user_id', user.id)
-      .order('enrolled_at', { ascending: false })
-
-    if (enrollmentData) {
-      enrolledCourses = enrollmentData
-        .map((entry) => entry.courses)
-        .filter(Boolean)
-    }
-
-    // Query all courses so students can browse and find new courses to enroll in
-    const { data: allCoursesData } = await supabase
-      .from('courses')
-      .select('id, title, description, created_at')
-      .order('created_at', { ascending: false })
-    allAvailableCourses = allCoursesData || []
+    studentDashboardData = await getStudentDashboardData(supabase, user.id)
   }
 
   // 5. Server Action to delete a course directly from the dashboard (Instructor ownership verified)
@@ -115,6 +98,20 @@ export default async function DashboardPage() {
     const supabase = await createClient()
     await supabase.auth.signOut() // Clears the auth cookies
     redirect('/login')           // Redirects user back to login page
+  }
+
+  if (studentDashboardData) {
+    return (
+      <StudentDashboard
+        displayName={studentDashboardData.profile?.full_name || user.email?.split('@')[0] || 'Learner'}
+        subscription={studentDashboardData.subscription}
+        courses={studentDashboardData.courses}
+        continueCourse={studentDashboardData.continueCourse}
+        recommendations={studentDashboardData.recommendations}
+        savedCourses={studentDashboardData.savedCourses}
+        savedCourseIds={studentDashboardData.savedCourseIds}
+      />
+    )
   }
 
   return (
@@ -212,83 +209,6 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* ============================================================== */}
-      {/* STUDENT VIEW: Shows enrolled "My courses" + "Available courses" */}
-      {/* ============================================================== */}
-      {role !== 'instructor' && (
-        <div style={{ marginTop: '30px' }}>
-          {/* Section 1: Enrolled Courses ("My courses") */}
-          <h2 style={{ margin: '0 0 15px 0' }}>My Courses</h2>
-          {enrolledCourses.length === 0 ? (
-            <p style={{ color: '#666', fontStyle: 'italic', marginBottom: '30px' }}>
-              You are not enrolled in any courses yet. Browse the available courses below to enroll!
-            </p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '35px' }}>
-              {enrolledCourses.map((course) => (
-                <div
-                  key={course.id}
-                  style={{
-                    border: '1px solid #c8e6c9',
-                    borderRadius: '6px',
-                    padding: '16px',
-                    backgroundColor: '#f1f8e9',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3 style={{ margin: '0 0 6px 0', fontSize: '18px' }}>
-                      <Link
-                        href={`/courses/${course.id}`}
-                        style={{ color: '#2e7d32', textDecoration: 'none' }}
-                      >
-                        {course.title} &rarr;
-                      </Link>
-                    </h3>
-                    <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#2e7d32', backgroundColor: '#e8f5e9', padding: '3px 8px', borderRadius: '12px' }}>
-                      Enrolled
-                    </span>
-                  </div>
-                  <p style={{ margin: 0, color: '#555', fontSize: '14px', whiteSpace: 'pre-wrap' }}>
-                    {course.description || <em>No description provided.</em>}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Section 2: Browse All Available Courses */}
-          <h2 style={{ margin: '0 0 15px 0' }}>Available Courses</h2>
-          {allAvailableCourses.length === 0 ? (
-            <p style={{ color: '#666', fontStyle: 'italic' }}>No courses available right now.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {allAvailableCourses.map((course) => (
-                <div
-                  key={course.id}
-                  style={{
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    padding: '16px',
-                    backgroundColor: '#fafafa',
-                  }}
-                >
-                  <h3 style={{ margin: '0 0 6px 0', fontSize: '18px' }}>
-                    <Link
-                      href={`/courses/${course.id}`}
-                      style={{ color: '#0070f3', textDecoration: 'none' }}
-                    >
-                      {course.title} &rarr;
-                    </Link>
-                  </h3>
-                  <p style={{ margin: 0, color: '#555', fontSize: '14px', whiteSpace: 'pre-wrap' }}>
-                    {course.description || <em>No description provided.</em>}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }

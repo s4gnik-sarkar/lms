@@ -88,6 +88,78 @@ export default async function CourseDetailPage({ params }) {
     .order('position', { ascending: true })
 
   const lessons = lessonsData || []
+  let progressByLesson = new Map()
+  if (user && userRole === 'student' && isEnrolled && lessons.length > 0) {
+    const { data: progressRows, error: progressError } = await supabase
+      .from('lesson_progress')
+      .select('lesson_id, is_completed')
+      .eq('user_id', user.id)
+      .in('lesson_id', lessons.map((lesson) => lesson.id))
+
+    if (progressError) {
+      throw new Error(`Unable to load lesson progress: ${progressError.message}`)
+    }
+    progressByLesson = new Map((progressRows || []).map((row) => [row.lesson_id, row.is_completed]))
+  }
+
+  async function setLessonCompletion(lessonId, isCompleted) {
+    'use server'
+
+    const supabase = await createClient()
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      redirect('/login')
+    }
+
+    const [{ data: targetLesson, error: lessonError }, { data: enrollment, error: enrollmentError }] =
+      await Promise.all([
+        supabase
+          .from('lessons')
+          .select('id')
+          .eq('id', lessonId)
+          .eq('course_id', id)
+          .maybeSingle(),
+        supabase
+          .from('enrollments')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('course_id', id)
+          .maybeSingle(),
+      ])
+
+    if (lessonError || enrollmentError) {
+      throw new Error(
+        `Unable to update lesson progress: ${lessonError?.message || enrollmentError?.message}`
+      )
+    }
+    if (!targetLesson || !enrollment) {
+      throw new Error('You must be enrolled in this course to update lesson progress.')
+    }
+
+    const timestamp = new Date().toISOString()
+    const { error: updateError } = await supabase.from('lesson_progress').upsert(
+      {
+        user_id: user.id,
+        lesson_id: lessonId,
+        is_completed: isCompleted,
+        completed_at: isCompleted ? timestamp : null,
+        updated_at: timestamp,
+      },
+      { onConflict: 'user_id,lesson_id' }
+    )
+
+    if (updateError) {
+      throw new Error(`Unable to update lesson progress: ${updateError.message}`)
+    }
+
+    revalidatePath(`/courses/${id}`)
+    revalidatePath('/dashboard')
+    revalidatePath('/dashboard/my-courses')
+  }
 
   // 6. Server Action: Student Enrollment
   async function enrollInCourse() {
@@ -392,6 +464,7 @@ export default async function CourseDetailPage({ params }) {
             {lessons.map((lesson, index) => (
               <div
                 key={lesson.id}
+                id={`lesson-${lesson.id}`}
                 className="rounded-2xl border border-border/60 bg-card p-5 sm:p-6 shadow-xs"
               >
                 <div className="flex items-center justify-between gap-3">
@@ -399,6 +472,26 @@ export default async function CourseDetailPage({ params }) {
                     Lesson {index + 1}: {lesson.title}
                   </h3>
 
+                  {user && userRole === 'student' && isEnrolled && (
+                    <form
+                      action={setLessonCompletion.bind(
+                        null,
+                        lesson.id,
+                        !progressByLesson.get(lesson.id)
+                      )}
+                    >
+                      <button
+                        type="submit"
+                        className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                          progressByLesson.get(lesson.id)
+                            ? 'bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300'
+                            : 'bg-primary/10 text-primary hover:bg-primary/20'
+                        }`}
+                      >
+                        {progressByLesson.get(lesson.id) ? 'Completed · Undo' : 'Mark complete'}
+                      </button>
+                    </form>
+                  )}
                   {!canAccessContent && (
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-full font-medium">
                       <Lock className="size-3" />
