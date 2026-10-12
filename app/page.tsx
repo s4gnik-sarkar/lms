@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Clock, GraduationCap, TrendingUp, ArrowRight, CheckCircle, Sparkles } from 'lucide-react'
+import Footer from '@/components/layout/Footer'
 
 export const metadata = {
   title: 'LMS Platform - Learn & Teach Online',
@@ -197,7 +198,9 @@ export default function HomePage() {
             </span>
           </div>
         </div>
+        <Footer />
       </section>
+
     </div>
   )
 }
